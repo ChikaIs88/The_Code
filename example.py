@@ -274,6 +274,8 @@ if __name__ == "__main__":
     #     )
     
     trainer = Trainer(
+        min_epochs=1, 
+        max_epochs=1000,
         accelerator="gpu" # Use 'gpu' to use the GPU acceleration if available. Here we go.
     )
 
