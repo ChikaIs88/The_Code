@@ -18,7 +18,8 @@ from PIL import Image
 import torch
 from torch import nn
 from torch.nn import functional as F
-from keras.callbacks import ModelCheckpoint
+from lightning.pytorch.callbacks import ModelCheckpoint
+from torchvision import transforms
 
 import os
 from os.path import join as pjoin, splitext as spt
@@ -88,6 +89,11 @@ class DeepLabHead(nn.Sequential):
             nn.Conv2d(256, num_classes, 1),
         )
 
+
+transform = transforms.Compose([
+    # you can add other transformations in this list
+    transforms.ToTensor()
+])
 # class Model(Module):
 #     # Here you should put your model class
 #         def __init__(self, in_channels: int, num_classes: int) -> None:
@@ -167,7 +173,7 @@ class MyDataset(Dataset):
         return gt, t0, t1
 
     def _check_validness(self, f):
-        return any([i in spt(f)[1] for i in ['jpg','png']])
+        return any([i in spt(f)[1] for i in ['jpg','jpg']])
 
     def _pil_loader(self, path: str) -> Image.Image:
         # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
@@ -219,7 +225,10 @@ class MyDataset(Dataset):
         output.paste(mask, (0, h))
         pred = F.to_pil_image(pred.cpu().float())
         output.paste(pred, (w, h))
-        return output
+
+        return imgs
+    
+    
     pass
 
 
