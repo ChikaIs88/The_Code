@@ -15,6 +15,7 @@ from functools import partial
 from typing import Any, List, Optional
 import PIL
 from PIL import Image
+import tensorrt as trt
 
 import torch
 from torch import nn
@@ -176,9 +177,6 @@ class MyDataset(Dataset):
             img = Image.open(f)
             return img.convert('RGB')
 
-    def _init_data_list(self):
-        pass
-
     def get_raw(self, index):
         fn_t0 = self.t0[index]
         fn_t1 = self.t1[index]
@@ -240,7 +238,7 @@ class MyDataModule(LightningDataModule):
             os.path.join(self.data_dir,"train")
         ) 
         self.val_data = MyDataset(
-            os.path.join(self.data_dir,"val")
+            os.path.join(self.data_dir,"validation")
         ) 
         self.test_data = MyDataset(
             os.path.join(self.data_dir,"test")
