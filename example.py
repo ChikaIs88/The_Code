@@ -13,9 +13,7 @@ from torch.optim import Adam
 from torch.utils.data import Dataset, DataLoader
 from functools import partial
 from typing import Any, List, Optional
-import PIL
 from PIL import Image
-import tensorrt as trt
 
 import torch
 from torch import nn
@@ -264,7 +262,7 @@ if __name__ == "__main__":
     ) 
     # Trainer has many parameters that may be useful for advanced training procedures
     checkpoint_callback = ModelCheckpoint(
-        filepath="checkpoints" , save_top_k=2, monitor="val_loss"
+        dirpath="checkpoints" , save_top_k=2, monitor="val_loss"
         )
     
     # trainer = Trainer(
