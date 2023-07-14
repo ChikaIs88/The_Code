@@ -152,11 +152,11 @@ class MyDataset(Dataset):
         self.root = root
         self.gt, self.t0, self.t1 = self._init_data_list()
         self._transforms = transforms
-        self._revert_transforms = None
+        self._revert_transforms = Compose([ToPILImage()])
         self.name = ''
         self.num_classes = 2
         if transforms is None:
-            transforms = Compose([ToTensor()])
+            transforms = Compose([ToTensor(self.t0, self.t1)])
 
     def _init_data_list(self):
         gt = []
@@ -214,8 +214,7 @@ class MyDataset(Dataset):
         return [mask_ratio, background_ratio]
 
     def get_pil(self, imgs, mask, pred=None):
-        assert self._revert_transforms is None
-        self._revert_transforms = Compose([ToPILImage()])
+        assert self._revert_transforms is not None
         t0, t1 = self._revert_transforms(imgs.cpu())
         w, h = t0.size
         output = Image.new('RGB', (w * 2, h * 2))
