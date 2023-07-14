@@ -220,6 +220,7 @@ class MyDataset(Dataset):
     def get_pil(self, imgs, mask, pred=None):
         assert self._revert_transforms is not None
         t0, t1 = self._revert_transforms(imgs.cpu())
+        gt = self._revert_transforms(mask.cpu())
         w, h = t0.size
         output = Image.new('RGB', (w * 2, h * 2))
         output.paste(t0)

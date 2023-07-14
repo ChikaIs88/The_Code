@@ -181,6 +181,46 @@ class MyDataset(Dataset):
         with open(path, 'rb') as f:
             img = Image.open(f)
             return img.convert('RGB')
+        
+    def get_transforms(args, train, size_dict=None):
+        mean=(0.485, 0.456, 0.406)
+        std=(0.229, 0.224, 0.225)
+        if size_dict is not None:
+            assert args.input_size in size_dict, "input_size: {}".format(size_dict.keys())
+            input_size = size_dict[args.input_size]
+        else:
+            input_size = args.input_size
+
+        mode = "Train" if train else "Test"
+        print("{} Aug:".format(mode))
+        augs = []
+        if train:
+            if args.randomcrop:
+                if args.input_size == 256:
+                    augs.append(T.Resize(286))
+                    augs.append(T.RandomCrop(input_size))
+                elif args.input_size == 512:
+                    augs.append(T.Resize((572, 572)))
+                    augs.append(T.RandomCrop(512))
+                else:
+                    raise ValueError(args.input_size)
+            else:
+                augs.append(T.Resize(input_size))
+            augs.append(T.RandomHorizontalFlip(args.randomflip))
+        else:
+            augs.append(T.Resize(input_size))
+        augs.append(T.ToTensor())
+        augs.append(T.Normalize(mean=mean, std=std))
+        augs.append(T.ConcatImages())
+        transforms = T.Compose(augs)
+        revert_transforms = T.Compose([
+            T.SplitImages(),
+            T.RevertNormalize(mean=mean, std=std),
+            T.ToPILImage()
+        ])
+        return transforms, revert_transforms
+
+
 
     def get_raw(self, index):
         fn_t0 = self.t0[index]
@@ -192,6 +232,16 @@ class MyDataset(Dataset):
         imgs = [img_t0, img_t1]
 
         mask = self._pil_loader(fn_mask).convert("L")
+
+        input_size = args.input_size
+        size_dict = {
+            224: (224, 1024),
+            256: (256, 1024),
+            448: (448, 2048)
+        }
+        assert input_size in size_dict, "input_size: {}".format(size_dict.keys())
+        transforms, revert_transforms = get_transforms(args, train, size_dict)
+        
         return imgs, mask
 
     def __getitem__(self, index):
@@ -231,43 +281,7 @@ class MyDataset(Dataset):
         output.paste(pred, (w, h))
         return output
     
-    def get_transforms(args, train, size_dict=None):
-        mean=(0.485, 0.456, 0.406)
-        std=(0.229, 0.224, 0.225)
-        if size_dict is not None:
-            assert args.input_size in size_dict, "input_size: {}".format(size_dict.keys())
-            input_size = size_dict[args.input_size]
-        else:
-            input_size = args.input_size
-
-        mode = "Train" if train else "Test"
-        print("{} Aug:".format(mode))
-        augs = []
-        if train:
-            if args.randomcrop:
-                if args.input_size == 256:
-                    augs.append(T.Resize(286))
-                    augs.append(T.RandomCrop(input_size))
-                elif args.input_size == 512:
-                    augs.append(T.Resize((572, 572)))
-                    augs.append(T.RandomCrop(512))
-                else:
-                    raise ValueError(args.input_size)
-            else:
-                augs.append(T.Resize(input_size))
-            augs.append(T.RandomHorizontalFlip(args.randomflip))
-        else:
-            augs.append(T.Resize(input_size))
-        augs.append(T.ToTensor())
-        augs.append(T.Normalize(mean=mean, std=std))
-        augs.append(T.ConcatImages())
-        transforms = T.Compose(augs)
-        revert_transforms = T.Compose([
-            T.SplitImages(),
-            T.RevertNormalize(mean=mean, std=std),
-            T.ToPILImage()
-        ])
-        return transforms, revert_transforms
+    
     pass
 
 
