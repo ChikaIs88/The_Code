@@ -24,6 +24,7 @@ from torchvision.transforms import Compose, ToTensor, ToPILImage
 import os
 from os.path import join as pjoin, splitext as spt
 from pathlib import Path
+import transforms as T
 
 class ASPPPooling(nn.Sequential):
     def __init__(self, in_channels: int, out_channels: int) -> None:
@@ -151,10 +152,11 @@ class MyDataset(Dataset):
         super(MyDataset, self).__init__()
         self.root = root
         self.gt, self.t0, self.t1 = self._init_data_list()
-        if transforms is None:
-            transforms = Compose([ToTensor()])
+        # if transforms is None:
+        #     transforms = Compose([ToTensor()])
         self._transforms = transforms
-        self._revert_transforms = Compose([ToPILImage()])
+        # self._revert_transforms = Compose([ToPILImage()])
+        self._revert_transforms = None
         self.name = ''
         self.num_classes = 2
         
@@ -195,8 +197,7 @@ class MyDataset(Dataset):
     def __getitem__(self, index):
         imgs, mask = self.get_raw(index)
         if self._transforms is not None:
-            mask = self._transforms(mask)
-            imgs, = self._transforms(imgs)
+            mgs, mask = self._transforms(imgs, mask)
         return imgs, mask
 
     def __len__(self):
@@ -230,7 +231,43 @@ class MyDataset(Dataset):
         output.paste(pred, (w, h))
         return output
     
-    
+    def get_transforms(args, train, size_dict=None):
+        mean=(0.485, 0.456, 0.406)
+        std=(0.229, 0.224, 0.225)
+        if size_dict is not None:
+            assert args.input_size in size_dict, "input_size: {}".format(size_dict.keys())
+            input_size = size_dict[args.input_size]
+        else:
+            input_size = args.input_size
+
+        mode = "Train" if train else "Test"
+        print("{} Aug:".format(mode))
+        augs = []
+        if train:
+            if args.randomcrop:
+                if args.input_size == 256:
+                    augs.append(T.Resize(286))
+                    augs.append(T.RandomCrop(input_size))
+                elif args.input_size == 512:
+                    augs.append(T.Resize((572, 572)))
+                    augs.append(T.RandomCrop(512))
+                else:
+                    raise ValueError(args.input_size)
+            else:
+                augs.append(T.Resize(input_size))
+            augs.append(T.RandomHorizontalFlip(args.randomflip))
+        else:
+            augs.append(T.Resize(input_size))
+        augs.append(T.ToTensor())
+        augs.append(T.Normalize(mean=mean, std=std))
+        augs.append(T.ConcatImages())
+        transforms = T.Compose(augs)
+        revert_transforms = T.Compose([
+            T.SplitImages(),
+            T.RevertNormalize(mean=mean, std=std),
+            T.ToPILImage()
+        ])
+        return transforms, revert_transforms
     pass
 
 
