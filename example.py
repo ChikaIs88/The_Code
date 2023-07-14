@@ -156,7 +156,7 @@ class MyDataset(Dataset):
         self.name = ''
         self.num_classes = 2
         if transforms is None:
-            transforms = Compose([ToTensor(self.t0, self.t1)])
+            transforms = Compose([ToTensor()])
 
     def _init_data_list(self):
         gt = []
