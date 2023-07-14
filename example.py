@@ -195,7 +195,8 @@ class MyDataset(Dataset):
     def __getitem__(self, index):
         imgs, mask = self.get_raw(index)
         if self._transforms is not None:
-            imgs, mask = self._transforms(imgs, mask)
+            mask = self._transforms(mask)
+            imgs, = self._transforms(imgs)
         return imgs, mask
 
     def __len__(self):
