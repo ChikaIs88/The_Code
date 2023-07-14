@@ -19,7 +19,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from lightning.pytorch.callbacks import ModelCheckpoint
-from torchvision import transforms
+from torchvision.transforms import Compose, ToTensor, ToPILImage
 
 import os
 from os.path import join as pjoin, splitext as spt
@@ -90,10 +90,7 @@ class DeepLabHead(nn.Sequential):
         )
 
 
-transform = transforms.Compose([
-    # you can add other transformations in this list
-    transforms.ToTensor()
-])
+
 # class Model(Module):
 #     # Here you should put your model class
 #         def __init__(self, in_channels: int, num_classes: int) -> None:
@@ -158,6 +155,8 @@ class MyDataset(Dataset):
         self._revert_transforms = None
         self.name = ''
         self.num_classes = 2
+        if transforms is None:
+            transforms = Compose([ToTensor()])
 
     def _init_data_list(self):
         gt = []
@@ -216,6 +215,7 @@ class MyDataset(Dataset):
 
     def get_pil(self, imgs, mask, pred=None):
         assert self._revert_transforms is not None
+        self._revert_transforms = Compose([ToPILImage()])
         t0, t1 = self._revert_transforms(imgs.cpu())
         w, h = t0.size
         output = Image.new('RGB', (w * 2, h * 2))
@@ -225,8 +225,7 @@ class MyDataset(Dataset):
         output.paste(mask, (0, h))
         pred = F.to_pil_image(pred.cpu().float())
         output.paste(pred, (w, h))
-
-        return imgs
+        return output
     
     
     pass
