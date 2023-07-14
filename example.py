@@ -214,7 +214,7 @@ class MyDataset(Dataset):
         return [mask_ratio, background_ratio]
 
     def get_pil(self, imgs, mask, pred=None):
-        assert self._revert_transforms is not None
+        assert self._revert_transforms is None
         self._revert_transforms = Compose([ToPILImage()])
         t0, t1 = self._revert_transforms(imgs.cpu())
         w, h = t0.size
