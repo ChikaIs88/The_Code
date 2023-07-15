@@ -12,7 +12,7 @@ from PIL import Image
 from os.path import join as pjoin, splitext as spt
 
 from dataset import CDDataset, get_transforms
-import other.transforms as T
+import other.dataset.transforms as T
 
 # import path_config as Data_path
   

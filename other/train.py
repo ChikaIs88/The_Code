@@ -24,7 +24,8 @@ from torchvision.transforms import Compose, ToTensor, ToPILImage
 import os
 from os.path import join as pjoin, splitext as spt
 from pathlib import Path
-import transforms as T
+
+import dataset.transforms as T 
 
 class ASPPPooling(nn.Sequential):
     def __init__(self, in_channels: int, out_channels: int) -> None:
@@ -151,11 +152,13 @@ class MyDataset(Dataset):
     def __init__(self, root, transforms=None):
         super(MyDataset, self).__init__()
         self.root = root
-        self.gt, self.t0, self.t1 = self._init_data_list()
+        # self.gt, self.t0, self.t1 = self._init_data_list()
         # if transforms is None:
         #     transforms = Compose([ToTensor()])
-        self._transforms = transforms
+        # self._transforms = transforms
         # self._revert_transforms = Compose([ToPILImage()])
+        self.gt, self.t0, self.t1 = [], [], []
+        self._transforms = transforms
         self._revert_transforms = None
         self.name = ''
         self.num_classes = 2
@@ -181,7 +184,66 @@ class MyDataset(Dataset):
         with open(path, 'rb') as f:
             img = Image.open(f)
             return img.convert('RGB')
-        
+
+    def get_raw(self, index):
+        fn_t0 = self.t0[index]
+        fn_t1 = self.t1[index]
+        fn_mask = self.gt[index]
+
+        img_t0 = self._pil_loader(fn_t0)
+        img_t1 = self._pil_loader(fn_t1)
+        imgs = [img_t0, img_t1]
+
+        mask = self._pil_loader(fn_mask).convert("L")
+        return imgs, mask
+
+    def __getitem__(self, index):
+        # img_t0, img_t1, mask = self.get_raw(index)
+        imgs, mask = self.get_raw(index)
+        if self._transforms is not None:
+            mask = self._transforms(mask)
+            imgs, = self._transforms(imgs)
+            # img_t0 = self._transforms(img_t0)
+            # img_t1 = self._transforms(img_t1)
+        # return img_t0, img_t1, mask
+        return imgs, mask
+
+    def __len__(self):
+        return len(self.gt)
+
+    def get_mask_ratio(self):
+        all_count = 0
+        mask_count = 0
+        for i in range(len(self.gt)):
+            _, mask = self.get_raw(i)
+            target = (F.to_tensor(mask) != 0).long()
+            mask_count += target.sum()
+            all_count += target.numel()
+        mask_ratio = mask_count / float(all_count)
+        background_ratio = (all_count - mask_count) / float(all_count)
+        return [mask_ratio, background_ratio]
+    
+
+
+
+    def get_pil(self, imgs, mask, pred=None):
+        assert self._revert_transforms is not None
+        t0, t1 = self._revert_transforms(imgs.cpu())
+        # t0 = self._revert_transforms(img_t0.cpu())
+        # t1 = self._revert_transforms(img_t1.cpu())
+
+        # gt = self._revert_transforms(mask.cpu())
+        w, h = t0.size
+        output = Image.new('RGB', (w * 2, h * 2))
+        output.paste(t0)
+        output.paste(t1, (w, 0))
+        mask = F.to_pil_image(mask.cpu().float())
+        output.paste(mask, (0, h))
+        pred = F.to_pil_image(pred.cpu().float())
+        output.paste(pred, (w, h))
+        return output
+    
+
     def get_transforms(args, train, size_dict=None):
         mean=(0.485, 0.456, 0.406)
         std=(0.229, 0.224, 0.225)
@@ -219,68 +281,6 @@ class MyDataset(Dataset):
             T.ToPILImage()
         ])
         return transforms, revert_transforms
-
-
-
-    def get_raw(self, index):
-        fn_t0 = self.t0[index]
-        fn_t1 = self.t1[index]
-        fn_mask = self.gt[index]
-
-        img_t0 = self._pil_loader(fn_t0)
-        img_t1 = self._pil_loader(fn_t1)
-        imgs = [img_t0, img_t1]
-
-        mask = self._pil_loader(fn_mask).convert("L")
-
-        input_size = args.input_size
-        size_dict = {
-            224: (224, 1024),
-            256: (256, 1024),
-            448: (448, 2048)
-        }
-        assert input_size in size_dict, "input_size: {}".format(size_dict.keys())
-        transforms, revert_transforms = get_transforms(args, train, size_dict)
-        
-        return imgs, mask
-
-    def __getitem__(self, index):
-        imgs, mask = self.get_raw(index)
-        if self._transforms is not None:
-            mgs, mask = self._transforms(imgs, mask)
-        return imgs, mask
-
-    def __len__(self):
-        return len(self.gt)
-
-    def get_mask_ratio(self):
-        all_count = 0
-        mask_count = 0
-        for i in range(len(self.gt)):
-            _, mask = self.get_raw(i)
-            target = (F.to_tensor(mask) != 0).long()
-            mask_count += target.sum()
-            all_count += target.numel()
-        mask_ratio = mask_count / float(all_count)
-        background_ratio = (all_count - mask_count) / float(all_count)
-        return [mask_ratio, background_ratio]
-    
-
-
-
-    def get_pil(self, imgs, mask, pred=None):
-        assert self._revert_transforms is not None
-        t0, t1 = self._revert_transforms(imgs.cpu())
-        w, h = t0.size
-        output = Image.new('RGB', (w * 2, h * 2))
-        output.paste(t0)
-        output.paste(t1, (w, 0))
-        mask = F.to_pil_image(mask.cpu().float())
-        output.paste(mask, (0, h))
-        pred = F.to_pil_image(pred.cpu().float())
-        output.paste(pred, (w, h))
-        return output
-    
     
     pass
 
