@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import Compose, ToTensor, Normalize
 from PIL import Image
@@ -17,8 +17,8 @@ class ChangeDetectionDataset(Dataset):
 
     def __getitem__(self, idx):
         idx *= 2
-        image_path1 = os.path.join(self.root_dir, self.image_list[idx])
-        image_path2 = os.path.join(self.root_dir, self.image_list[idx + 1])
+        image_path1 = os.path.join(self.root_dir,  'set0', 'train', 't0')
+        image_path2 = os.path.join(self.root_dir, 'set0', 'train', 't1')
         image1 = Image.open(image_path1).convert("RGB")
         image2 = Image.open(image_path2).convert("RGB")
 
@@ -32,7 +32,7 @@ class ChangeDetectionDataset(Dataset):
 class ChangeDetectionModel(nn.Module):
     def __init__(self):
         super(ChangeDetectionModel, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(6, 64, kernel_size=3, stride=1, padding=1)
         self.relu1 = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
         self.relu2 = nn.ReLU(inplace=True)
@@ -47,46 +47,8 @@ class ChangeDetectionModel(nn.Module):
         return x
 
 
-def train_model(model, train_loader, num_epochs, device):
-    criterion = nn.BCELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
-    model.to(device)
-    model.train()
-
-    for epoch in range(num_epochs):
-        running_loss = 0.0
-        for images1, images2 in train_loader:
-            images1 = images1.to(device)
-            images2 = images2.to(device)
-
-            optimizer.zero_grad()
-
-            outputs = model(images1, images2)
-            loss = criterion(outputs, torch.ones_like(outputs))
-            loss.backward()
-            optimizer.step()
-
-            running_loss += loss.item()
-
-        print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss / len(train_loader)}")
-
-
-def generate_change_mask(model, image1, image2, device):
-    model.to(device)
-    model.eval()
-
-    image1 = image1.unsqueeze(0).to(device)
-    image2 = image2.unsqueeze(0).to(device)
-
-    with torch.no_grad():
-        change_mask = model(image1, image2)
-
-    return change_mask.squeeze().cpu().numpy()
-
-
 # Set the path to your dataset
-dataset_path = "pcd/set0/train"
+dataset_path = "pcd/set0/train/t0"
 
 # Set the device (cuda or cpu)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -101,18 +63,21 @@ dataset = ChangeDetectionDataset(dataset_path, transform=transform)
 data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 
 # Create the model
-model = ChangeDetectionModel()
+model = ChangeDetectionModel().to(device)
 
-# Train the model
-train_model(model, data_loader, num_epochs=10, device=device)
-
-# Example usage:
 # Load two test images
-test_image1 = transform(Image.open("pcd/set0/train/t0/00000033.jpg").convert("RGB"))
-test_image2 = transform(Image.open("pcd/set0/train/t1/00000033.jpg").convert("RGB"))
+test_image1 = transform(Image.open("pcd/set0/train/t0/00000033.jpg").convert("RGB")).unsqueeze(0).to(device)
+test_image2 = transform(Image.open("pcd/set0/train/t1/00000033.jpg").convert("RGB")).unsqueeze(0).to(device)
+
+# Load the trained model checkpoint
+model.load_state_dict(torch.load("pcd/trained_model_checkpoint.pth"))
+
+# Set the model to evaluation mode
+model.eval()
 
 # Generate the change mask
-change_mask = generate_change_mask(model, test_image1, test_image2, device)
+with torch.no_grad():
+    change_mask = model(test_image1, test_image2).squeeze().cpu().numpy()
 
 # Save the change mask as an image
 change_mask_image = Image.fromarray((change_mask * 255).astype("uint8"), mode="L")
