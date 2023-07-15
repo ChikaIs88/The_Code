@@ -5,6 +5,9 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 from PIL import Image
 import os
 
+import cv2
+import numpy as np
+
 
 class ChangeDetectionDataset(Dataset):
     def __init__(self, root_dir, transform=None):
@@ -47,38 +50,42 @@ class ChangeDetectionModel(nn.Module):
         return x
 
 
-# Set the path to your dataset
 dataset_path = "pcd/set0/train/t0"
 
-# Set the device (cuda or cpu)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Define the transformations
 transform = Compose([ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-# Create the dataset
 dataset = ChangeDetectionDataset(dataset_path, transform=transform)
 
-# Create the data loader
 data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 
-# Create the model
 model = ChangeDetectionModel().to(device)
 
-# Load two test images
-test_image1 = transform(Image.open("pcd/set0/train/t0/00000033.jpg").convert("RGB")).unsqueeze(0).to(device)
-test_image2 = transform(Image.open("pcd/set0/train/t1/00000033.jpg").convert("RGB")).unsqueeze(0).to(device)
+test_image1 = transform(Image.open("pcd/set0/train/t0/00000098.jpg").convert("RGB")).unsqueeze(0).to(device)
+test_image2 = transform(Image.open("pcd/set0/train/t1/00000098.jpg").convert("RGB")).unsqueeze(0).to(device)
 
-# Load the trained model checkpoint
-model.load_state_dict(torch.load("pcd/trained_model_checkpoint.pth"))
+# model.load_state_dict(torch.load("pcd/trained_model_checkpoint.pth"))
 
-# Set the model to evaluation mode
 model.eval()
 
-# Generate the change mask
-with torch.no_grad():
-    change_mask = model(test_image1, test_image2).squeeze().cpu().numpy()
+# # Generate the change mask
+# with torch.no_grad():
+#     change_mask = model(test_image1, test_image2).squeeze().cpu().numpy()
 
-# Save the change mask as an image
-change_mask_image = Image.fromarray((change_mask * 255).astype("uint8"), mode="L")
-change_mask_image.save("pcd/change_mask.jpg")
+# # Convert the change mask to black and white
+# change_mask_bw = (change_mask > 0.5).astype("uint8") * 255
+# change_mask_bw_inverted = 255 - change_mask_bw
+
+# change_mask_image = Image.fromarray(change_mask_bw_inverted, mode="L")
+
+# change_mask_image.save("pcd/change_mask.jpg")
+
+with torch.no_grad():
+    change_mask = model(test_image1, test_image2).squeeze().cpu().numpy()  
+
+    #  we calculate the change quantification by taking the mean of all the values in the change mask tensor.
+
+change_quantification = round(change_mask.mean(), 2)
+
+print("The Amount of change is", change_quantification)
