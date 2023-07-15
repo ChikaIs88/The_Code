@@ -190,14 +190,16 @@ class MyDataset(Dataset):
         imgs = [img_t0, img_t1]
 
         mask = self._pil_loader(fn_mask).convert("L")
-        return imgs, mask
+        return img_t0, img_t1, mask
 
     def __getitem__(self, index):
-        imgs, mask = self.get_raw(index)
+        img_t0, img_t1, mask = self.get_raw(index)
         if self._transforms is not None:
             mask = self._transforms(mask)
-            imgs, = self._transforms(imgs)
-        return imgs, mask
+            # imgs, = self._transforms(imgs)
+            img_t0 = self._transforms(img_t0)
+            img_t1 = self._transforms(img_t1)
+        return img_t0, img_t1, mask
 
     def __len__(self):
         return len(self.gt)
@@ -217,9 +219,12 @@ class MyDataset(Dataset):
 
 
 
-    def get_pil(self, imgs, mask, pred=None):
+    def get_pil(self, img_t0, img_t1, mask, pred=None):
         assert self._revert_transforms is not None
-        t0, t1 = self._revert_transforms(imgs.cpu())
+        # t0, t1 = self._revert_transforms(imgs.cpu())
+        t0 = self._revert_transforms(img_t0.cpu())
+        t1 = self._revert_transforms(img_t1.cpu())
+
         gt = self._revert_transforms(mask.cpu())
         w, h = t0.size
         output = Image.new('RGB', (w * 2, h * 2))
