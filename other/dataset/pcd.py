@@ -9,7 +9,7 @@ from os.path import join as pjoin, splitext as spt
 from dataset.dataset import CDDataset, get_transforms
 import dataset.transforms as T
 
-import dataset.path_config as Data_path
+# import dataset.path_config as Data_path
 
 class PCD_CV(CDDataset):
     # all images are 256x256
