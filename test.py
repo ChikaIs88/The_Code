@@ -62,8 +62,9 @@ data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 
 model = ChangeDetectionModel().to(device)
 
-test_image1 = transform(Image.open("pcd/set0/train/t0/00000098.jpg").convert("RGB")).unsqueeze(0).to(device)
-test_image2 = transform(Image.open("pcd/set0/train/t1/00000098.jpg").convert("RGB")).unsqueeze(0).to(device)
+test_image1 = transform(Image.open("pcd/set0/train/t0/00000059.jpg").convert("RGB")).unsqueeze(0).to(device)
+test_image2 = transform(Image.open("pcd/set0/train/t1/00000059.jpg").convert("RGB")).unsqueeze(0).to(device)
+
 
 # model.load_state_dict(torch.load("pcd/trained_model_checkpoint.pth"))
 
