@@ -40,7 +40,7 @@ class ChangeDetectionModel(LightningModule):
 class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, image_folder, transform=None):
         self.image_folder = image_folder
-        self.image_paths = sorted(glob.glob(os.path.join(image_folder, '*.png')))
+        self.image_paths = sorted(glob.glob(os.path.join(image_folder, '*.jpg')))
         self.transform = transform
 
     def __getitem__(self, idx):
