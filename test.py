@@ -92,4 +92,5 @@ with torch.no_grad():
 
 change_quantification = round(change_mask.mean(), 2)
 
-print("The Amount of change is", change_quantification)
+print("The Amount of change between", change_quantification)
+print(image1, image2)
