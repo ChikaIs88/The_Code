@@ -4,32 +4,27 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import Compose, ToTensor, Normalize
 from PIL import Image
 import os
+import glob
 
 import cv2
 import numpy as np
 
 
-class ChangeDetectionDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
-        self.root_dir = root_dir
+class ImageDataset(torch.utils.data.Dataset):
+    def __init__(self, image_folder, transform=None):
+        self.image_folder = image_folder
+        self.image_paths = sorted(glob.glob(os.path.join(image_folder, '*.jpg')))
         self.transform = transform
-        self.image_list = os.listdir(root_dir)
-
-    def __len__(self):
-        return len(self.image_list) // 2
 
     def __getitem__(self, idx):
-        idx *= 2
-        image_path1 = os.path.join(self.root_dir,  'set0', 'train', 't0')
-        image_path2 = os.path.join(self.root_dir, 'set0', 'train', 't1')
-        image1 = Image.open(image_path1).convert("RGB")
-        image2 = Image.open(image_path2).convert("RGB")
+        image_path = self.image_paths[idx]
+        image = Image.open(image_path)
+        if self.transform is not None:
+            image = self.transform(image)
+        return image
 
-        if self.transform:
-            image1 = self.transform(image1)
-            image2 = self.transform(image2)
-
-        return image1, image2
+    def __len__(self):
+        return len(self.image_paths)
 
 
 class ChangeDetectionModel(nn.Module):
@@ -50,20 +45,21 @@ class ChangeDetectionModel(nn.Module):
         return x
 
 
-dataset_path = "pcd/set0/train/t0"
+dataset1 = ImageDataset(image_folder='pcd/set0/train/t0', transform=Compose([ToTensor()]))
+dataset2 = ImageDataset(image_folder='pcd/set0/train/t1', transform=Compose([ToTensor()]))
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 transform = Compose([ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-dataset = ChangeDetectionDataset(dataset_path, transform=transform)
+# dataset = ChangeDetectionDataset(dataset_path, transform=transform)
 
-data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
+data_loader = DataLoader(dataset1, batch_size=1, shuffle=True)
 
 model = ChangeDetectionModel().to(device)
 
-test_image1 = transform(Image.open("pcd/set0/train/t0/00000059.jpg").convert("RGB")).unsqueeze(0).to(device)
-test_image2 = transform(Image.open("pcd/set0/train/t1/00000059.jpg").convert("RGB")).unsqueeze(0).to(device)
+# test_image1 = transform(Image.open("pcd/set0/train/t0/00000059.jpg").convert("RGB")).unsqueeze(0).to(device)
+# test_image2 = transform(Image.open("pcd/set0/train/t1/00000059.jpg").convert("RGB")).unsqueeze(0).to(device)
 
 
 # model.load_state_dict(torch.load("pcd/trained_model_checkpoint.pth"))
@@ -81,9 +77,16 @@ model.eval()
 # change_mask_image = Image.fromarray(change_mask_bw_inverted, mode="L")
 
 # change_mask_image.save("pcd/change_mask.jpg")
+# image1 = dataset1[0].unsqueeze(0).convert("RGB").unsqueeze(0).to(device)  # Add batch dimension
+# image2 = dataset2[0].unsqueeze(0).convert("RGB").unsqueeze(0).to(device)  # Add batch dimension
+
+image1 = dataset1[0].convert("RGB").unsqueeze(0).to(device)  # Add batch dimension
+image2 = dataset2[0].convert("RGB").unsqueeze(0).to(device)  # Add batch dimension
+
+
 
 with torch.no_grad():
-    change_mask = model(test_image1, test_image2).squeeze().cpu().numpy()  
+    change_mask = model(image1, image2).squeeze().cpu().numpy()  
 
     #  we calculate the change quantification by taking the mean of all the values in the change mask tensor.
 
