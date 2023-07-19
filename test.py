@@ -45,8 +45,11 @@ class ChangeDetectionModel(nn.Module):
         return x
 
 
+    
 dataset1 = ImageDataset(image_folder='pcd/set0/train/t0', transform=Compose([ToTensor()]))
 dataset2 = ImageDataset(image_folder='pcd/set0/train/t1', transform=Compose([ToTensor()]))
+gt_dataset = ImageDataset(image_folder='pcd/set0/train/mask', transform=Compose([ToTensor()]))
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -57,12 +60,6 @@ transform = Compose([ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.22
 data_loader = DataLoader(dataset1, batch_size=1, shuffle=True)
 
 model = ChangeDetectionModel().to(device)
-
-# test_image1 = transform(Image.open("pcd/set0/train/t0/00000059.jpg").convert("RGB")).unsqueeze(0).to(device)
-# test_image2 = transform(Image.open("pcd/set0/train/t1/00000059.jpg").convert("RGB")).unsqueeze(0).to(device)
-
-
-# model.load_state_dict(torch.load("pcd/trained_model_checkpoint.pth"))
 
 model.eval()
 
@@ -80,17 +77,35 @@ model.eval()
 # image1 = dataset1[0].unsqueeze(0).convert("RGB").unsqueeze(0).to(device)  # Add batch dimension
 # image2 = dataset2[0].unsqueeze(0).convert("RGB").unsqueeze(0).to(device)  # Add batch dimension
 
-image1 = dataset1[0].convert("RGB").unsqueeze(0).to(device)  # Add batch dimension
-image2 = dataset2[0].convert("RGB").unsqueeze(0).to(device)  # Add batch dimension
+image1 = dataset1[20].unsqueeze(0).to(device)  # Add batch dimension
+image2 = dataset2[20].unsqueeze(0).to(device)  # Add batch dimension
+gt = gt_dataset[20].unsqueeze(0).to(device) 
 
 
+if torch.equal(image1, image2) is False:
 
-with torch.no_grad():
-    change_mask = model(image1, image2).squeeze().cpu().numpy()  
 
-    #  we calculate the change quantification by taking the mean of all the values in the change mask tensor.
+    with torch.no_grad():
+        change_mask = model(image1, image2).squeeze().cpu().numpy()  
 
-change_quantification = round(change_mask.mean(), 2)
+        #  we calculate the change quantification by taking the mean of all the values in the change mask tensor.
 
-print("The Amount of change between", change_quantification)
-print(image1, image2)
+
+    # change_mask = change_mask / np.max(change_mask)
+
+    # Clamp the values between 0 and 1 (optional)
+    # change_mask = np.clip(change_mask, 0, 1)
+
+    amount_of_change =   change_mask.mean()
+
+    gt_mask =   torch.mean(gt)
+
+    change_q =   round(((amount_of_change / 255.0 ) * 100), 3 )  # round(change_mask.mean(), 2)
+    gt_value = torch.round(((gt_mask / 255.0 ) * 100), decimals=3) 
+
+    # change_detected = torch.clamp(gt_value, 0, 1)
+
+
+    print("The Amount of change is", change_q, "and the gt is", gt_value )
+else:
+    print("These are the same images")
