@@ -77,9 +77,9 @@ model.eval()
 # image1 = dataset1[0].unsqueeze(0).convert("RGB").unsqueeze(0).to(device)  # Add batch dimension
 # image2 = dataset2[0].unsqueeze(0).convert("RGB").unsqueeze(0).to(device)  # Add batch dimension
 
-image1 = dataset1[20].unsqueeze(0).to(device)  # Add batch dimension
-image2 = dataset2[20].unsqueeze(0).to(device)  # Add batch dimension
-gt = gt_dataset[20].unsqueeze(0).to(device) 
+image1 = dataset1[0].unsqueeze(0).to(device)  # Add batch dimension
+image2 = dataset2[0].unsqueeze(0).to(device)  # Add batch dimension
+gt = gt_dataset[0].unsqueeze(0).to(device) 
 
 
 if torch.equal(image1, image2) is False:
